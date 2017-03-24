@@ -2,6 +2,9 @@
 
 (in-package #:cl-microkanren)
 
+;; https://github.com/jasonhemann/microKanren/blob/master/miniKanren-wrappers.scm
+;; https://mullr.github.io/micrologic/literate.html
+
 ;; helpers
 (defun pair? (v) (consp v))
 
@@ -155,3 +158,15 @@
     (== a 42)
     (== b a))
  empty-state)  
+
+(funcall
+ (fresh (a b c d)
+   (conj
+     (== a 42)
+     (== b a))
+   (conj
+     (== a c)
+     (== c d)))
+ empty-state)  
+
+

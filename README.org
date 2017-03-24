@@ -1,0 +1,6 @@
+* cl microkanren
+
+Trying to implement http://minikanren.org/#microKanrenPaper in Common Lisp.
+
+It might actually work, not really sure.
+

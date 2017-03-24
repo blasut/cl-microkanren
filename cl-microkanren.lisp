@@ -39,7 +39,9 @@
 (defun walk (u s)
   (let ((pr (and (var? u)
                  (assp (lambda (v) (var=? u v)) s))))
-    (if pr (walk (cdr pr) s) u)))
+    (if pr
+        (walk (cdr pr) s)
+        u)))
   
 (defun ext-s (x v s)
   `((,x . ,v) . ,s))
@@ -88,6 +90,31 @@
     ((functionp $) (lambda () (bind (funcall $) g)))
     (t (mplus (funcall g (car $)) (bind (cdr $) g)))))
 
+;; macros for nicer use, and more minikamren style
+
+(defmacro fresh (syms &body body)
+  `(let (,@(mapcar (lambda (x)
+                     `(,x (var ,(symbol-name x))))
+                   syms))
+     (conj+ ,@body)))
+
+(defmacro Zzz (g)
+  `(lambda (s/c)
+     (lambda ()
+       (funcall ,g s/c))))
+  
+(funcall (Zzz (== 1 2))
+  empty-state)
+
+(funcall (funcall
+           (LAMBDA (S/C)
+            (LAMBDA () (FUNCALL (== 1 2) S/C)))
+           empty-state))
+
+
+
+;;;; playground
+
 ;; example query in scheme
 ;; (define empty-state ' (() . 0))
 ;; ((call/fresh (λ (q) (≡ q 5))) empty-state)
@@ -99,7 +126,10 @@
 (let* ((a (var "a"))
        (b (var "b"))
        (s empty-state))
-  (funcall (== a b) s))
+  (funcall (conj
+            (== a 1)
+            (== a b))
+         s))
 
 (defparameter a-and-b
   (conj
@@ -112,3 +142,16 @@
 ;; in paper:
 ;; ((((#(1) . 5) (#(0) . 7)) . 2) (((#(1) . 6) (#(0) . 7)) . 2))
 
+
+(funcall
+  (conj
+    (call/fresh (lambda (a) (disj (== a 7) (== a 1))))
+    (call/fresh (lambda (b) (disj (== b 5) (== b 6)))))
+  empty-state)
+
+
+(funcall
+ (fresh (a b)
+    (== a 42)
+    (== b a))
+ empty-state)  

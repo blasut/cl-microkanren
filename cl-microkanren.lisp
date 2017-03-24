@@ -23,24 +23,22 @@
     (loop :for cons :in list
      :when (funcall f (car cons)) :do (return cons))))
   
+(defun my-aref (v i)
+  (if (= 0 (length v))  
+      nil
+      (aref v i)))
 
 ;;; "cl-microkanren" goes here. Hacks and glory await!
 
 (defun var (c) (vector c))
 (defun var? (x) (vectorp x))
-(defun my-aref (v i)
-  (if (= 0 (length v))  
-      nil
-      (aref v i)))
 (defun var=? (x1 x2) (eql (my-aref x1 0) (my-aref x2 0)))
 
 ;; u == var(?)
 ;; s == substiution-map?
 (defun walk (u s)
   (let ((pr (and (var? u)
-                 (assp (lambda (v)
-                         (var=? u v))
-                       s))))
+                 (assp (lambda (v) (var=? u v)) s))))
     (if pr (walk (cdr pr) s) u)))
   
 (defun ext-s (x v s)

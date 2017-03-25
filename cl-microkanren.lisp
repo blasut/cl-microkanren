@@ -75,11 +75,11 @@
 
 (defun disj (g1 g2)
   (lambda (s/c)
-    (mplus (funcall g1 s/c) (funcall g2 s/c))))
+    (funcall (mplus (funcall g1 s/c) (funcall g2 s/c)))))
 
 (defun conj (g1 g2)
   (lambda (s/c)
-    (bind (funcall g1 s/c) g2)))
+    (funcall (bind (funcall g1 s/c) g2))))
 
 (defun mplus ($1 $2)
   (cond
@@ -96,15 +96,44 @@
 ;; macros for nicer use, and more minikamren style
 
 (defmacro fresh (syms &body body)
-  `(let (,@(mapcar (lambda (x)
-                     `(,x (var ,(symbol-name x))))
-                   syms))
-     (conj+ ,@body)))
+  (fresh-helper syms body))
+
+(defun fresh-helper (syms clauses)
+  (cond
+    ((null syms) `(conj+ ,@clauses))
+    (t `(funcall #'call/fresh (lambda (,(pop syms)) ,(fresh-helper syms clauses))))))
+
+(macroexpand-1 '(fresh (a q) (== q 5) (== a q)))
+
+(funcall
+ (fresh (a q) (== q 5) (== a q))
+ empty-state)
+
+(funcall (call/fresh (lambda (q) (== q 5))) empty-state)
+
+(macroexpand-1 '(conj+ (== q 5)))
+
+(macroexpand-1 '(zzz (== q 5)))
+
+(zzz (== 1 1))
+
+(funcall
+ (zzz (== 1 1))
+ empty-state)
+
+
+(defmacro conj+ (&rest goals)
+  (cj-helper goals))
+
+(defun cj-helper (goals)
+  (match goals
+      ((guard x (null (cdr x))) `(zzz ,@x))
+      ((cons (place g) rest) `(conj (zzz ,g) ,(cj-helper rest)))))
 
 (defmacro Zzz (g)
   `(lambda (s/c)
-     (lambda ()
-       (funcall ,g s/c))))
+       (lambda ()
+         (funcall ,g s/c))))
   
 (funcall (Zzz (== 1 2))
   empty-state)
@@ -159,6 +188,7 @@
     (== b a))
  empty-state)  
 
+
 (funcall
  (fresh (a b c d)
    (conj
@@ -169,4 +199,14 @@
      (== c d)))
  empty-state)  
 
+
+(match '((== 1 2) (== 1 5))
+  ((cons a))
+  ((cons a b) (+ a b)))
+
+(macroexpand-1 '(conj+ (== 1 2) (== 3 3) (== 4 4) (== 5 5) (== 6 6)))
+
+(funcall
+ (conj+ (== 1 2) (== 3 3) (== 4 4) (== 5 5) (== 6 6))
+ empty-state)
 

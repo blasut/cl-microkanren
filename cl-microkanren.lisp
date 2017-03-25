@@ -105,11 +105,22 @@
 
 (macroexpand-1 '(fresh (a q) (== q 5) (== a q)))
 
+(defmacro my-run (syms &body forms)
+  `(funcall ,(fresh-helper syms forms) empty-state)) 
+
+(macroexpand-1 '(my-run (a b) (== a b) (== a 5)))
+
+(my-run (a b)
+  (== a b)
+  (== a 5))
+
+
 (funcall
  (fresh (a q)
    (== q 5)
    (== a q))
  empty-state)
+
 
 (funcall
  (fresh (a b)

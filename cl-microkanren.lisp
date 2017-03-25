@@ -75,11 +75,11 @@
 
 (defun disj (g1 g2)
   (lambda (s/c)
-    (funcall (mplus (funcall g1 s/c) (funcall g2 s/c)))))
+    (mplus (funcall g1 s/c) (funcall g2 s/c))))
 
 (defun conj (g1 g2)
   (lambda (s/c)
-    (funcall (bind (funcall g1 s/c) g2))))
+    (bind (funcall g1 s/c) g2)))
 
 (defun mplus ($1 $2)
   (cond
@@ -101,26 +101,25 @@
 (defun fresh-helper (syms clauses)
   (cond
     ((null syms) `(conj+ ,@clauses))
-    (t `(funcall #'call/fresh (lambda (,(pop syms)) ,(fresh-helper syms clauses))))))
+    (t `(call/fresh (lambda (,(pop syms)) ,(fresh-helper syms clauses))))))
 
 (macroexpand-1 '(fresh (a q) (== q 5) (== a q)))
 
 (funcall
- (fresh (a q) (== q 5) (== a q))
+ (fresh (a q)
+   (== q 5)
+   (== a q))
  empty-state)
-
-(funcall (call/fresh (lambda (q) (== q 5))) empty-state)
-
-(macroexpand-1 '(conj+ (== q 5)))
-
-(macroexpand-1 '(zzz (== q 5)))
-
-(zzz (== 1 1))
 
 (funcall
- (zzz (== 1 1))
+ (fresh (a b)
+   (== a b)
+   (== b a))
  empty-state)
 
+(macroexpand '(conj+ (== q 5)))
+
+(macroexpand '(conj+ (== q 5) (== q 1)))
 
 (defmacro conj+ (&rest goals)
   (cj-helper goals))
@@ -132,18 +131,8 @@
 
 (defmacro Zzz (g)
   `(lambda (s/c)
-       (lambda ()
-         (funcall ,g s/c))))
+       (funcall ,g s/c)))
   
-(funcall (Zzz (== 1 2))
-  empty-state)
-
-(funcall (funcall
-           (LAMBDA (S/C)
-            (LAMBDA () (FUNCALL (== 1 2) S/C)))
-           empty-state))
-
-
 
 ;;;; playground
 

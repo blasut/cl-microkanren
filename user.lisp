@@ -8,7 +8,7 @@
       st))
 
 (defun take (n st)
-  (scm-if (= 0 n) '()
+  (if (= 0 n) '()
     (let ((st (pull st)))
       (cond
         ((null? st) '())
@@ -104,6 +104,7 @@
 
 (run* (q) (conso 1 q '(1 2 3)))
 
+(run* (q) (conso 1 `(2 ,q) '(1 2 3)))
 
 
 (run* (q x y)
@@ -118,6 +119,7 @@
   (call/fresh
    (lambda (a)
      (disj (== a 7) (== a 1))))))
+
 
 (take-all
  (call/empty-state
@@ -135,6 +137,7 @@
 
 (run 10 (a b)
       (== a b))
+
 
 (run 5 (a b)
      (conde ((== a b) (== b 1))

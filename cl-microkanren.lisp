@@ -3,69 +3,43 @@
 (in-package #:cl-microkanren)
 
 ;; helpers
-(defun pair? (v)
-  (if (consp v)
-      t
-      'false))
+(defun pair? (v) (consp v))
 (defun eqv? (x y) (eql x y))
 (defun null? (x) (null x))
-
-(defun assp (pred alist)
-  (if (null? alist)
-      'false
-      (loop :for cons :in alist
-         :if (not (equal 'false (funcall pred (car cons)))) :do (return cons)
-         :finally (return 'false))))
-  
-(defun my-aref (v i)
-  (if (= 0 (length v))  
-      nil
-      (aref v i)))
-
-(defmacro scm-if (term then else)
-  `(if (equal ,term 'false)
-      ,else
-      ,then))
-
-(defmacro scm-and (&rest goals)
-  (match goals
-    ((cons (quote nil) ()) `t)
-    ((cons (quote (quote nil)) ()) `t)
-    ((cons (place g) '())  `(scm-if ,g ,g 'false))
-    ((cons (place g) rest) `(scm-if ,g (scm-and ,@rest) 'false))))
 
 ;;; "cl-microkanren" goes here. Hacks and glory await!
 
 (defun lvar (c) (vector c))
-(defun lvar? (c) (if (vectorp c) t 'false))
-(defun lvar=? (x1 x2)
-  (scm-and
-    (lvar? x1) (lvar? x2) (eql (aref x1 0) (aref x2 0))))
+(defun lvar? (c) (vectorp c))
+(defun lvar=? (x1 x2) (eql (aref x1 0) (aref x2 0)))
 
 ;; u == lvar(?)
 ;; s == substiution-map?
 (defun walk (u s)
-  (let ((pr (scm-and (lvar? u) (assp (lambda (v) (lvar=? u v)) s))))
-    (scm-if pr
-        (walk (cdr pr) s)
-        u)))
-  
+  (if (and (lvar? u)
+           (pair? s)
+           (position u s :key #'car :test #'equalp))
+     (walk (cdr (elt s (position u s :key #'car :test #'equalp))) u)
+     u))
+
 (defun ext-s (x v s)
   `((,x . ,v) . ,s))
 
-(defvar mzero '())
+(defparameter mzero '())
 (defun unit (s/c) (cons s/c mzero))
 
 (defun unify (u v s)
   (let ((u (walk u s)) (v (walk v s)))
     (cond
-      ((not (equal 'false (scm-and (lvar? u) (lvar? v) (lvar=? u v)))) s)
+      ((and (lvar? u) (lvar? v) (lvar=? u v)) s)
       ((lvar? u) (ext-s u v s))
       ((lvar? v) (ext-s v u s))
-      ((not (equal 'false (scm-and (pair? u) (pair? v))))
+      ((and (pair? u) (pair? v))
        (let ((s (unify (car u) (car v) s)))
-         (scm-and s (unify (cdr u) (cdr v) s))))
-      (t (scm-and (eqv? u v) s)))))
+         (if (null s) ;; even if empty-list, keep checking. Shouldnt infinite-loop because of cdr
+           (unify (cdr u) (cdr v) s)  
+           (and s (unify (cdr u) (cdr v) s)))))
+      (t (and (eqv? u v) s)))))
 
 (defun call/fresh (f)
   (lambda (s/c)
@@ -75,7 +49,7 @@
 (defun == (u v)
   (lambda (s/c)
     (let ((s (unify u v (car s/c))))
-      (scm-if s (unit `(,s . ,(cdr s/c))) mzero))))
+      (if s (unit `(,s . ,(cdr s/c))) mzero))))
 
 (defun mplus ($1 $2)
   (cond

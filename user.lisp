@@ -21,7 +21,7 @@
         (cons (car next) (take-all (cdr next))))))
 
 (defun call/empty-state (g)
-  (funcall g empty-state))
+  (funcall g '(() . 0)))
 
 (defun reify-s (v s)
   (let ((v (walk v s)))
@@ -41,9 +41,7 @@
      (walk* v (reify-s v '()))))
 
 (defun mK-reify (s/c)
-  (mapcar (lambda (s)
-            (reify-state/1st-var s))
-          s/c))
+  (mapcar (lambda (s) (reify-state/1st-var s)) s/c))
 
 (defun walk* (v s)
   (let ((v (walk v s)))
@@ -73,18 +71,6 @@
     (t `(call/fresh (lambda (,(car (car e)))
                       (fresh ,(cdr (car e)) ,@(cdr e)))))))
 
-(defmacro conde (&rest goals)
-  `(disj+ (conj+ ,@(first goals))
-          (conj+ ,@(second goals))))
-
-(defun appendo (l s out)
- (conde
-   ((== '() l) (== s out))
-   ((fresh (a d res)
-           (== `(,a . ,d) l)
-           (== `(,a . ,res) out)
-           (appendo d s res)))))
-
 (defmacro run (num &rest goals)
   `(mK-reify
     (take ,num
@@ -97,8 +83,43 @@
      (call/empty-state
       (fresh ,@goals)))))
 
+(defmacro conde (&rest goals)
+  `(disj+ (conj+ ,@(first goals))
+          (conj+ ,@(second goals))))
+
+(defun appendo (l s out)
+ (conde
+   ((== '() l) (== s out))
+   ((fresh (a d res)
+           (== `(,a . ,d) l)
+           (== `(,a . ,res) out)
+           (appendo d s res)))))
+
+(defun conso (first rest out)
+  (if (lvar? rest)
+    (== `(,first . ,rest) out)
+    (== (cons first rest) out)))
+
+(run* (q) (conso 1 '(2 3) q))
+
+(run* (q) (conso 1 q '(1 2 3)))
+;;        (== (1 . #(0)) (1 2 3)))
+
+
+
+(run* (q x y)
+   (== `(,x ,y) q) (appendo x y '(1 2 3 4 5)))
 
 ;;;;;;;;;;; playground
+
+(macroexpand-1 '(conde ((== a b) (== b c)) ((== b c) (== d e))))
+
+(take-all
+ (call/empty-state
+  (call/fresh
+   (lambda (a)
+     (disj (== a 7) (== a 1))))))
+
 
 (run 2 (q)
       (== 1 q)
@@ -117,17 +138,20 @@
 
 (run* (q x y) (== `(,x ,y) q) (appendo x y '(1 2 3 4 5)))
 
+(run* (q)
+  (== q (list 1 2 3)))
 
-(macroexpand-1 '(conde ((== a b) (== b c)) ((== b c) (== d e))))
+(run* (q)
+  (fresh (a b c)
+         (disj+
+          (== q 1)
+          (== q 2)
+          (== q 3))))
 
-(take-all
- (call/empty-state
-  (call/fresh
-   (lambda (a)
-     (disj (== a 7) (== a 1))))))
-
-
-
+(run* (q)
+      (fresh (x y)
+             (appendo x y '(1 2 3 4 5))
+             (== q (list x y))))                      
 
 
 

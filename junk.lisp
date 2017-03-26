@@ -1,4 +1,5 @@
 
+
 ;;;; tests from the repo
 (defmacro test-check (title tested-expression expected-result)
   `(progn
@@ -8,17 +9,6 @@
        (or (equalp expected produced)
            (format nil "Failed: ~a~%Expected: ~a~%Computed: ~a~%" 'tested-expression expected produced)))))
 
-(defparameter a-and-b
-  (conj
-    (call/fresh (lambda (a) (== a 7)))
-    (call/fresh (lambda (b) (disj (== b 5) (== b 6))))))
-
-(defun fives (x)
-  (disj
-   (== x 5)      
-   (lambda (a/c)
-      (lambda ()
-        (funcall (fives x) a/c)))))
 
 (defun appendo (l s out)
     (disj

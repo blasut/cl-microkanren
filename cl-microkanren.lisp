@@ -4,15 +4,14 @@
 
 ;; helpers
 (defun pair? (v) (consp v))
-
 (defun eqv? (x y) (eql x y))
-
 (defun null? (x) (null x))
 
-(defun assp (f list)
-  (unless (= 0 (length list))
-    (loop :for cons :in list
-     :when (funcall f (car cons)) :do (return cons))))
+(defun assp (pred alist)
+  (loop :for cons :in alist
+     :if (and
+          (pair? cons)
+          (funcall pred (car cons))) :do (return cons)))
   
 (defun my-aref (v i)
   (if (= 0 (length v))  
@@ -22,14 +21,13 @@
 ;;; "cl-microkanren" goes here. Hacks and glory await!
 
 (defun lvar (c) (vector c))
-(defun lvar? (x) (vectorp x))
-(defun lvar=? (x1 x2) (eql (my-aref x1 0) (my-aref x2 0)))
+(defun lvar? (c) (vectorp c))
+(defun lvar=? (x1 x2) (eql (aref x1 0) (aref x2 0)))
 
 ;; u == lvar(?)
 ;; s == substiution-map?
 (defun walk (u s)
-  (let ((pr (and (lvar? u)
-                 (assp (lambda (v) (lvar=? u v)) s))))
+  (let ((pr (and (lvar? u) (assp (lambda (v) (lvar=? u v)) s))))
     (if pr
         (walk (cdr pr) s)
         u)))
@@ -58,16 +56,9 @@
 
 (defun == (u v)
   (lambda (s/c)
+    (break)
     (let ((s (unify u v (car s/c))))
       (if s (unit `(,s . ,(cdr s/c))) mzero))))
-
-(defun disj (g1 g2)
-  (lambda (s/c)
-    (mplus (funcall g1 s/c) (funcall g2 s/c))))
-
-(defun conj (g1 g2)
-  (lambda (s/c)
-    (bind (funcall g1 s/c) g2)))
 
 (defun mplus ($1 $2)
   (cond
@@ -80,5 +71,15 @@
     ((null? $) mzero)
     ((functionp $) (lambda () (bind (funcall $) g)))
     (t (mplus (funcall g (car $)) (bind (cdr $) g)))))
+
+
+
+(defun disj (g1 g2)
+  (lambda (s/c)
+    (mplus (funcall g1 s/c) (funcall g2 s/c))))
+
+(defun conj (g1 g2)
+  (lambda (s/c)
+    (bind (funcall g1 s/c) g2)))
 
 ;;; "cl-microkanren" stops here

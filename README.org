@@ -4,6 +4,11 @@ Trying to implement http://minikanren.org/#microKanrenPaper in Common Lisp.
 
 It might actually work, not really sure.
 
+resources:
+- https://github.com/jasonhemann/microKanren/blob/master/miniKanren-wrappers.scm
+- https://mullr.github.io/micrologic/literate.html
+- https://github.com/pzel/mkr
+
 todo:
 
 - [] cleanup

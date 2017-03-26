@@ -12,15 +12,6 @@
 
 (defun null? (x) (null x))
 
-(let ((f (lambda (x) (= x 3)))
-      (list '((3 a) (1 b) (4 c) (3 b))))
-  (loop :for cons :in list
-     :when (funcall f (car cons)) :do (return cons)))
-
-(let ((f (lambda (x) (= x 3)))
-      (list '((3 a) (1 b) (4 c) (3 b))))
-  (assp f list))
-
 (defun assp (f list)
   (unless (= 0 (length list))
     (loop :for cons :in list
@@ -33,15 +24,15 @@
 
 ;;; "cl-microkanren" goes here. Hacks and glory await!
 
-(defun var (c) (vector c))
-(defun var? (x) (vectorp x))
-(defun var=? (x1 x2) (eql (my-aref x1 0) (my-aref x2 0)))
+(defun lvar (c) (vector c))
+(defun lvar? (x) (vectorp x))
+(defun lvar=? (x1 x2) (eql (my-aref x1 0) (my-aref x2 0)))
 
-;; u == var(?)
+;; u == lvar(?)
 ;; s == substiution-map?
 (defun walk (u s)
-  (let ((pr (and (var? u)
-                 (assp (lambda (v) (var=? u v)) s))))
+  (let ((pr (and (lvar? u)
+                 (assp (lambda (v) (lvar=? u v)) s))))
     (if pr
         (walk (cdr pr) s)
         u)))
@@ -49,20 +40,15 @@
 (defun ext-s (x v s)
   `((,x . ,v) . ,s))
 
-(defun == (u v)
-  (lambda (s/c)
-    (let ((s (unify u v (car s/c))))
-      (if s (unit `(,s . ,(cdr s/c))) mzero))))
-
 (defun unit (s/c) (cons s/c mzero))
 (defvar mzero '())
 
 (defun unify (u v s)
   (let ((u (walk u s)) (v (walk v s)))
     (cond
-      ((and (var? u) (var? v) (var=? u v)) s)
-      ((var? u) (ext-s u v s))
-      ((var? v) (ext-s v u s))
+      ((and (lvar? u) (lvar? v) (lvar=? u v)) s)
+      ((lvar? u) (ext-s u v s))
+      ((lvar? v) (ext-s v u s))
       ((and (pair? u) (pair? v))
        (let ((s (unify (car u) (car v) s)))
          (and s (unify (cdr u) (cdr v) s))))
@@ -71,7 +57,12 @@
 (defun call/fresh (f)
   (lambda (s/c)
     (let ((c (cdr s/c)))
-      (funcall (funcall f (var c)) `(,(car s/c) . ,(+ c 1))))))
+      (funcall (funcall f (lvar c)) `(,(car s/c) . ,(+ c 1))))))
+
+(defun == (u v)
+  (lambda (s/c)
+    (let ((s (unify u v (car s/c))))
+      (if s (unit `(,s . ,(cdr s/c))) mzero))))
 
 (defun disj (g1 g2)
   (lambda (s/c)
@@ -93,205 +84,130 @@
     ((functionp $) (lambda () (bind (funcall $) g)))
     (t (mplus (funcall g (car $)) (bind (cdr $) g)))))
 
-;;;; tests from the repo
-(defmacro test-check (title tested-expression expected-result)
-  `(progn
-     (format t "Testing ~s\n" ,title)
-     (let* ((expected ,expected-result)
-            (produced ,tested-expression))
-       (or (equalp expected produced)
-           (format nil "Failed: ~a~%Expected: ~a~%Computed: ~a~%" 'tested-expression expected produced)))))
+;;; hm
 
-(defparameter a-and-b
-  (conj
-    (call/fresh (lambda (a) (== a 7)))
-    (call/fresh (lambda (b) (disj (== b 5) (== b 6))))))
-
-(defun appendo (l s out)
-    (disj
-     (conj (== '() l) (== s out))
-     (call/fresh
-      (lambda (a)
-        (call/fresh
-         (lambda (d)
-           (conj
-            (== `(,a . ,d) l)
-            (call/fresh
-             (lambda (res)
-               (conj
-                (== `(,a . ,res) out)
-                (lambda (s/c)
-                  (lambda ()
-                    (funcall (appendo d s res) s/c)))))))))))))
-
-(defun call-appendo ()
-  (call/fresh
-   (lambda (q)
-     (call/fresh
-      (lambda (l)
-        (call/fresh
-         (lambda (s)
-           (call/fresh
-            (lambda (out)
-              (conj
-               (appendo l s out)
-               (== `(,l ,s ,out) q)))))))))))
-
-(defun ground-appendo ()
-  (appendo '(a) '(b) '(a b)))
-
-(defmacro test-run (form)
-  `(funcall ,form empty-state)) 
-
-(test-check "second-set t1"
-  (let (($ (test-run (call/fresh (lambda (q) (== q 5))))))
-    (car $))
-  '(((#(0) . 5)) . 1))
-
-(test-check "second-set t2"
-  (let (($ (test-run (call/fresh (lambda (q) (== q 5))))))
-    (cdr $))
-  '())
-
-(test-check "second-set t3"
-  (let (($ (test-run a-and-b)))
-    (car $))
-  '(((#(1) . 5) (#(0) . 7)) . 2))
-
-(test-check "second-set t4"
-  (let (($ (test-run a-and-b)))
-    (car (cdr $)))
-  '(((#(1) . 6) (#(0) . 7)) . 2))
-
-(test-check "second-set t5"
-  (let (($ (test-run a-and-b)))
-    (cdr (cdr $)))
-  '())
-
-(test-check "who cares"
-  (let (($ (test-run (call/fresh (lambda (q) (fives q))))))
-    (take 1 $))
-  '((((#(0) . 5)) . 1)))
-
-(test-check "ground appendo"
-  (car (funcall (funcall (ground-appendo) empty-state)))
-  '(((#(2) b) (#(1)) (#(0) . a)) . 3))
-
-(test-check "appendo"
-  (funcall (call-appendo) empty-state)
-  '((((#(0) #(1) #(2) #(3)) (#(2) . #(3)) (#(1))) . 4)
-    (((#(0) #(1) #(2) #(3)) (#(2) . #(6)) (#(5)) (#(3) #(4) . #(6)) (#(1) #(4) . #(5))) . 7)))
-
-
-;;;; playground
-
-;; example query in scheme
-;; (define empty-state ' (() . 0))
-;; ((call/fresh (λ (q) (≡ q 5))) empty-state)
-;; => ((((#(0) . 5)) . 1))
 (defparameter empty-state '(() . 0))
-(funcall (call/fresh (lambda (q) (== q 5))) empty-state)
-;; => ((((#(0) . 5)) . 1)) 
 
-(let* ((a (var "a"))
-       (b (var "b"))
-       (s empty-state))
-  (funcall (conj
-            (== a 1)
-            (== a b))
-         s))
+(defun pull (st)
+  (if (functionp st)
+      (pull (funcall st))
+      st))
 
-(funcall a-and-b empty-state)
-;; result from call:
-;; ((((#(1) . 5) (#(0) . 7)) . 2) (((#(1) . 6) (#(0) . 7)) . 2))
-;; in paper:
-;; ((((#(1) . 5) (#(0) . 7)) . 2) (((#(1) . 6) (#(0) . 7)) . 2))
+(defun take (n st)
+  (if (= 0 n) '()
+    (let ((st (pull st)))
+      (cond
+        ((null? st) '())
+        (t (cons (car st) (take (- n 1) (cdr st))))))))
 
+(defun take-all (st)
+  (let ((next (pull st)))
+    (if (null? next) 
+        '()
+        (cons (car next) (take-all (cdr next))))))
 
-(funcall
-  (conj
-    (call/fresh (lambda (a) (disj (== a 7) (== a 1))))
-    (call/fresh (lambda (b) (disj (== b 5) (== b 6)))))
-  empty-state)
+(defun call/empty-state (g)
+  (funcall g empty-state))
 
-;; macros for nicer use, and more minikamren style
+(defun reify-s (v s)
+  (let ((v (walk v s)))
+    (cond
+     ((lvar? v)
+      (let ((n (reify-name (length s))))
+        (cons `(,v . ,n) s)))
+     ((pair? v)
+      (reify-s (cdr v) (reify-s (car v) s)))
+     (t s))))
 
-(defmacro fresh (syms &body body)
-  (fresh-helper syms body))
+(defun reify-name (n)
+  (make-symbol (concatenate 'string "_." (write-to-string n))))
 
-(defun fresh-helper (syms clauses)
-  (cond
-    ((null syms) `(conj+ ,@clauses))
-    (t `(call/fresh (lambda (,(pop syms)) ,(fresh-helper syms clauses))))))
+(defun reify-state/1st-var (s/c)
+  (let ((v (walk* (lvar 0) (car s/c))))
+     (walk* v (reify-s v '()))))
 
-(macroexpand-1 '(fresh (a q) (== q 5) (== a q)))
+(defun mK-reify (s/c)
+  (mapcar (lambda (s)
+            (reify-state/1st-var s))
+          s/c))
 
-(defmacro my-run (syms &body forms)
-  `(funcall ,(fresh-helper syms forms) empty-state)) 
+(defun walk* (v s)
+  (let ((v (walk v s)))
+    (cond
+      ((lvar? v) v)
+      ((pair? v)
+       (cons (walk* (car v) s)
+             (walk* (cdr v) s)))
+      (t v))))
 
-(macroexpand-1 '(my-run (a b) (== a b) (== a 5)))
+(take-all
+ (call/empty-state
+  (call/fresh
+   (lambda (a)
+     (disj (== a 7) (== a 1))))))
 
-(my-run (a b)
-  (== a b)
-  (== a 5))
-
-
-(funcall
- (fresh (a q)
-   (== q 5)
-   (== a q))
- empty-state)
-
-
-(funcall
- (fresh (a b)
-   (== a b)
-   (== b a))
- empty-state)
-
-(macroexpand '(conj+ (== q 5)))
-
-(macroexpand '(conj+ (== q 5) (== q 1)))
+(defmacro zzz (g) 
+  `(lambda(s/c) (lambda() (funcall ,g s/c))))
 
 (defmacro conj+ (&rest goals)
-  (cj-helper goals))
-
-(defun cj-helper (goals)
   (match goals
       ((guard x (null (cdr x))) `(zzz ,@x))
-      ((cons (place g) rest) `(conj (zzz ,g) ,(cj-helper rest)))))
+      ((cons (place g) rest) `(conj (zzz ,g) (conj+ ,@rest)))))
 
-(defmacro Zzz (g)
-  `(lambda (s/c)
-       (funcall ,g s/c)))
-  
+(defmacro disj+ (&rest goals)
+  (match goals
+      ((guard x (null (cdr x))) `(zzz ,@x))
+      ((cons (place g) rest) `(disj (zzz ,g) (disj+ ,@rest)))))
+
+(defmacro fresh (&rest e)
+  (cond
+    ((null? (car e)) `(conj+ ,@(cdr e)))
+    (t `(call/fresh (lambda (,(car (car e)))
+                      (fresh ,(cdr (car e)) ,@(cdr e)))))))
+
+(defmacro conde (&rest goals)
+  `(disj+ (conj+ ,@(first goals))
+          (conj+ ,@(second goals))))
+
+(macroexpand-1 '(conde ((== a b) (== b c)) ((== b c) (== d e))))
+
+(defun appendo (l s out)
+ (conde
+   ((== '() l) (== s out))
+   ((fresh (a d res)
+           (== `(,a . ,d) l)
+           (== `(,a . ,res) out)
+           (appendo d s res)))))
+
+(defmacro run (num &rest goals)
+  `(mK-reify
+    (take ,num
+          (call/empty-state
+           (fresh ,@goals))))) 
+
+(defmacro run* (&rest goals)
+  `(mK-reify
+    (take-all
+     (call/empty-state
+      (fresh ,@goals)))))
 
 
+;; playground
 
-(funcall
- (fresh (a b)
-    (== a 42)
-    (== b a))
- empty-state)  
+(run 2 (q)
+      (== 1 q)
+      (== 1 1))
 
+(run 10 (a b)
+      (== a b))
 
-(funcall
- (fresh (a b c d)
-   (conj
-     (== a 42)
-     (== b a))
-   (conj
-     (== a c)
-     (== c d)))
- empty-state)  
+(run 5 (a b)
+     (conde ((== a b) (== b 1))
+            ((== a b))))
 
+(run* (q) (== '(a c o r n) q))
 
-(match '((== 1 2) (== 1 5))
-  ((cons a))
-  ((cons a b) (+ a b)))
+(run* (q) (fresh (x y) (== `(,x ,y) q) (appendo x y '(1 2 3 4 5))))
 
-(macroexpand-1 '(conj+ (== 1 2) (== 3 3) (== 4 4) (== 5 5) (== 6 6)))
+(run* (q x y) (== `(,x ,y) q) (appendo x y '(1 2 3 4 5)))
 
-(funcall
- (conj+ (== 1 2) (== 3 3) (== 4 4) (== 5 5) (== 6 6))
- empty-state)

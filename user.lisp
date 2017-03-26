@@ -106,6 +106,8 @@
 
 (run* (q) (conso 1 `(2 ,q) '(1 2 3)))
 
+(run* (q) (fresh (a b) (conso a `(2 ,b) '(1 2 3)) (== q (list a b))))
+;; sets a & b to match the list and then sets the result to q
 
 (run* (q x y)
    (== `(,x ,y) q) (appendo x y '(1 2 3 4 5)))

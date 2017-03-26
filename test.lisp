@@ -82,21 +82,16 @@
   (sixes+ x))
 
 ;; treat '() as truthy
-(assert (scm-and '() 'a 'b 'c) 'c)
-(assert (scm-and '() 'a 'b 'false 'c) 'b)
+(assert (equal (scm-and '() 'a 'b 'c) 'c))
+(assert (equal (scm-and '() 'a 'b 'false 'c) 'b))
 
-(assert (scm-orr '() 'a 'b 'false 'c) 'a)
-(assert (scm-orr 'false 'false '() 'false 'c) '())
-(assert (scm-if 'false 'a 'b) 'false)
-(assert (scm-if '() 'a 'b) 'a)
+(assert (equal (scm-and 'false 'false 'false) 'false))
 
-(defun scm-and (&rest args)
-  (print args)
-  (loop :for el :in args
-     :for i :from 0
-     :collecting el :into forms
-     :if (equal el 'false) :do (return (elt forms (1- i)))
-     :finally (return (elt forms i))))
-                  
-(equal 'b (scm-and '() 'a 'b 'false 'c))
-(equal 'c (scm-and '() 'a 'b 'c))
+(assert (equal (scm-or '() 'a 'b 'false 'c) '()))
+(assert (equal (scm-or 'false 'false '() 'false 'c) '()))
+(assert (equal (scm-or 'false 'false) nil))
+(assert (equal (scm-or 'a 'b '()) 'a))
+
+(assert (equal (scm-if 'false 'a 'b) 'b))
+(assert (equal (scm-if () 'a 'b) 'a))
+

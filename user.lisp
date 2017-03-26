@@ -8,7 +8,7 @@
       st))
 
 (defun take (n st)
-  (if (= 0 n) '()
+  (scm-if (= 0 n) '()
     (let ((st (pull st)))
       (cond
         ((null? st) '())
@@ -53,7 +53,7 @@
       (t v))))
 
 (defmacro zzz (g) 
-  `(lambda(s/c) (lambda() (funcall ,g s/c))))
+  `(lambda (s/c) (lambda() (funcall ,g s/c))))
 
 (defmacro conj+ (&rest goals)
   (match goals
@@ -103,7 +103,6 @@
 (run* (q) (conso 1 '(2 3) q))
 
 (run* (q) (conso 1 q '(1 2 3)))
-;;        (== (1 . #(0)) (1 2 3)))
 
 
 
@@ -120,10 +119,19 @@
    (lambda (a)
      (disj (== a 7) (== a 1))))))
 
+(take-all
+ (call/empty-state
+  (call/fresh
+   (lambda (a)
+     (conj (== a 7)
+           (== a 1))))))
+
+
 
 (run 2 (q)
       (== 1 q)
       (== 1 1))
+
 
 (run 10 (a b)
       (== a b))

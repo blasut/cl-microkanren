@@ -84,7 +84,9 @@
     ((functionp $) (lambda () (bind (funcall $) g)))
     (t (mplus (funcall g (car $)) (bind (cdr $) g)))))
 
-;;; hm
+;;; "cl-microkanren" goes stops here
+
+;;; below are helper macros and a playground area
 
 (defparameter empty-state '(() . 0))
 
@@ -140,12 +142,6 @@
              (walk* (cdr v) s)))
       (t v))))
 
-(take-all
- (call/empty-state
-  (call/fresh
-   (lambda (a)
-     (disj (== a 7) (== a 1))))))
-
 (defmacro zzz (g) 
   `(lambda(s/c) (lambda() (funcall ,g s/c))))
 
@@ -169,8 +165,6 @@
   `(disj+ (conj+ ,@(first goals))
           (conj+ ,@(second goals))))
 
-(macroexpand-1 '(conde ((== a b) (== b c)) ((== b c) (== d e))))
-
 (defun appendo (l s out)
  (conde
    ((== '() l) (== s out))
@@ -192,7 +186,7 @@
       (fresh ,@goals)))))
 
 
-;; playground
+;;;;;;;;;;; playground
 
 (run 2 (q)
       (== 1 q)
@@ -211,3 +205,11 @@
 
 (run* (q x y) (== `(,x ,y) q) (appendo x y '(1 2 3 4 5)))
 
+
+(macroexpand-1 '(conde ((== a b) (== b c)) ((== b c) (== d e))))
+
+(take-all
+ (call/empty-state
+  (call/fresh
+   (lambda (a)
+     (disj (== a 7) (== a 1))))))

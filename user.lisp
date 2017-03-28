@@ -112,6 +112,35 @@
 (run* (q x y)
    (== `(,x ,y) q) (appendo x y '(1 2 3 4 5)))
 
+;;;;;;;;;;; streams playground
+
+(call/empty-state
+ (conj (call/fresh (lambda (a) (== a 7)))
+       (call/fresh (lambda (b) (disj (== b 5)
+                                     (== b 6))))))
+(defun fives (x)
+  "example of inverse-n-delay"
+  (disj (== x 5) (lambda (s/c) (lambda () (funcall (fives x) s/c)))))
+
+(defun sixes (x)
+  "example of inverse-n-delay"
+  (disj (== x 6) (lambda (s/c) (lambda () (funcall (sixes x) s/c)))))
+           
+(defun fives-and-sixes ()
+  (call/fresh (lambda (x) (disj (fives x) (sixes x)))))
+
+
+
+;; this call returns an list with a answer and the cdr of the state-map is a closure
+;; this is how infinitive streams are represented
+;; probably "immature"?
+(funcall (fives-and-sixes) empty-state)
+
+(take 1 (funcall (fives-and-sixes) empty-state))
+
+
+
+
 ;;;;;;;;;;; playground
 
 (macroexpand-1 '(conde ((== a b) (== b c)) ((== b c) (== d e))))
@@ -163,7 +192,7 @@
 
 (run* (q)
       (fresh (x y)
-             (appendo x y '(1 2 3 4 5))
+             (appendo x y '(1 2))
              (== q (list x y))))                      
 
 
